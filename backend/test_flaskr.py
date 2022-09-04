@@ -24,6 +24,13 @@ class TriviaTestCase(unittest.TestCase):
             self.db.init_app(self.app)
             # create all tables
             self.db.create_all()
+
+            self.new_question = {
+                "question": "What is the full meaning of CSS",
+                "answer": "Cascading Style Sheet",
+                "category": "Science",
+                "difficulty": 4
+            }
     
     def tearDown(self):
         """Executed after reach test"""
@@ -34,6 +41,94 @@ class TriviaTestCase(unittest.TestCase):
     Write at least one test for each test for successful operation and for expected errors.
     """
 
+    def test_get_paginated_questions(self):
+        res = self.client().get('/questions')
+        data = json.loads(res.data)
+
+        self.assertEqual(res.status_code, 200)
+        self.assertEqual(data['success'], True)
+        self.assertTrue(data['total_questions'])
+        self.assertTrue(len(data['questions']))
+
+    def test_get_all_categories(self):
+        res = self.client().get('/categories')
+        data = json.loads(res.data)
+        
+        self.assertEqual(res.status_code, 200)
+        self.assertEqual(data['success'], True)
+        self.assertTrue(data['total_categories'])
+
+    def get_categories_with_wrong_methods_405(self):
+        """Test 405 using wrong method to retrieve categories"""
+        res = self.client().patch('/categories')
+        data = json.loads(res.data)
+
+        self.assertEqual(res.status_code, 405)
+        self.assertEqual(data['success'], False)
+        self.assertEqual(data['message'], 'method not allowed')
+
+    def test_get_questions(self):
+        """Test retrieve questions"""
+        res = self.client().get('/questions')
+        data = json.loads(res.data)
+        
+        self.assertEqual(res.status_code, 200)
+        self.assertEqual(data['success'], True)
+        self.assertTrue(data['questions'])
+        self.assertEqual(data['total_questions'], 19)
+        self.assertTrue(data['categories'])
+        self.assertTrue(data['current_category'])
+
+    def test_delete_question(self):
+        res = self.client().delete('/questions/3')
+        data = json.loads(res.data)
+
+        question = Question.query.filter(Question.id == 3).one_or_none()
+
+        self.assertEqual(res.status_code, 200)
+        self.assertEqual(data['success'], True)
+        self.assertEqual(question, None)
+    
+    def test_delete_unavailable_question(self):
+        res = self.client().delete('/questions/5000')
+        data = json.loads(res.data)
+
+        self.assertEqual(res.status_code, 422)
+        self.assertEqual(data['success'], False)
+        self.assertEqual(data['message'], 'unprocessable')
+
+    def test_new_question(self):
+        res = self.client().post('/questions', json=self.new_question)
+        data = json.loads(res.data)
+
+        self.assertEqual(res.status_code, 200)
+        self.assertEqual(data['success'], True)
+
+    def test_405_creation_not_allowed(self):
+        res = self.client().post('/questions/45', json=self.new_question)
+        data = json.loads(res.data)
+
+        self.assertEqual(res.status_code, 405)
+        self.assertEqual(data['success'], False)
+        self.assertEqual(data['message'], 'method not allowed')
+    
+    def test_get_questions_by_category(self):
+        res = self.client().get('/categories/1/questions')
+        data = json.loads(res.data)
+
+        self.assertEqual(res.status_code, 200)
+        self.assertEqual(data['success'], True)
+        self.assertTrue(len(data['questions']))
+        self.assertEqual(data['current_category'], 1)
+        self.assertTrue(data['total_questions'])
+
+    def get_questions_by_category_wrong(self):
+        res = self.client().post('/categories/1/questions')
+        data = json.loads(res.data)
+
+        self.assertEqual(res.status_code, 405)
+        self.assertEqual(data['success'], False)
+        self.assertEqual(data['message'], 'method not allowed')
 
 # Make the tests conveniently executable
 if __name__ == "__main__":

@@ -244,29 +244,39 @@ def create_app(test_config=None):
     # and shown whether they were correct or not.
     # """
     @app.route("/quizzes", methods=["POST"])
-    def play_quiz():
+    def play_quizzes():
+            selection = None
             body = request.get_json()
-            previous_questions = body.get("previous_questions", None)
-            quiz_category = body.get("quiz_category", None)
-            category_id = quiz_category["id"]
-            selection = Question.query.order_by(Question.id).all()
+            quiz_category = body.get("quiz_category")
+            past_ids = body.get("past_question")
+            category_id = quiz_category.get('id')
+
 
             try:
                 if category_id ==0:
-                    selection = Question.query.order_by(Question.id).all()
+                    # To retrieve all questions
+                    selection = Question.query.all()
 
                 else:
-                    selection = Question.query.order_by(Question.id).filter(Question.category==int(category_id)).all()
-                    question = random.choice(selection)
-
-                return (
-                    jsonify(
-                        {
+                    # To retrieve questions in the particular category
+                    selection = Question.query.order_by(Question.id).filter(Question.category==category_id).all()
+                    current_questions = paginate_questions(request, selection)  
+                    if len(current_questions) == 0:
+                        return jsonify({
                             "success": True,
-                            "question": question,
-                        }
-                    )
-                )
+                            "question": None
+                        })
+
+                    else:
+                        question = random.choice(selection)
+                        return (
+                            jsonify(
+                                {
+                                    "success": True,
+                                    "question": question.format(),
+                                }
+                            )
+                        )
             except:
                 abort(400)
 
